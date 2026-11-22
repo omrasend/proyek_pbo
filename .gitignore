@@ -1,0 +1,24 @@
+﻿# Compiled class files & JARs
+*.class
+*.jar
+*.war
+*.ear
+
+# Build directories (Maven / Gradle / NetBeans / Ant)
+/target/
+/build/
+/out/
+/dist/
+/nbproject/private/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
