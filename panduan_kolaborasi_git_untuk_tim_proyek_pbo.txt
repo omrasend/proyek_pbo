@@ -1,0 +1,98 @@
+================================================================================
+PANDUAN KOLABORASI GIT & GITHUB - TUGAS AKHIR PBO (JAVAFX)
+Repository: https://github.com/omrasend/proyek_pbo
+================================================================================
+
+PENTING: Ikuti langkah di bawah ini secara berurutan agar kode antar anggota
+kelompok tidak saling menimpa (conflict) dan riwayat kontribusi tercatat jelas.
+
+--------------------------------------------------------------------------------
+TAHAP 1: TERIMA UNDANGAN COLLABORATOR (WAJIB DILAKUKAN PERTAMA)
+--------------------------------------------------------------------------------
+1. Buka email yang terdaftar di akun GitHub masing-masing, ATAU buka langsung:
+   https://github.com/omrasend/proyek_pbo/invitations
+2. Klik tombol "Accept invitation".
+   (Jika belum di-accept, kalian tidak akan bisa melakukan git push).
+
+--------------------------------------------------------------------------------
+TAHAP 2: DOWNLOAD (CLONE) PROJECT KE LAPTOP (CUKUP SEKALI DI AWAL)
+--------------------------------------------------------------------------------
+1. Buat folder kosong di laptop kalian (contoh: D:\Project_PBO).
+   *Catatan: Hindari menyimpan di dalam folder sinkronisasi cloud (seperti
+   OneDrive/Nextcloud) agar file .git tidak terkunci saat proses sync.
+2. Buka PowerShell / Terminal / Git Bash di dalam folder tersebut.
+3. Jalankan perintah berikut untuk mengunduh project:
+
+   git clone https://github.com/omrasend/proyek_pbo.git
+
+4. Masuk ke folder hasil clone:
+
+   cd proyek_pbo
+
+5. Pastikan identitas Git sudah terpasang di laptop kalian (cukup sekali):
+
+   git config --global user.name "Nama Lengkap Kalian"
+   git config --global user.email "email_github_kalian@gmail.com"
+
+--------------------------------------------------------------------------------
+TAHAP 3: BUAT BRANCH SENDIRI SESUAI PEMBAGIAN TUGAS
+--------------------------------------------------------------------------------
+JANGAN langsung mengedit dan nge-push ke branch "main". Buat branch masing-masing
+sesuai bagian yang dikerjakan (contoh: fitur-login, fitur-database, fitur-transaksi).
+
+Jalankan perintah berikut untuk membuat sekaligus pindah ke branch baru:
+
+   git checkout -b nama-branch-kalian
+
+Contoh:
+   git checkout -b fitur-login
+
+--------------------------------------------------------------------------------
+TAHAP 4: RUTINITAS SAAT MULAI & SELESAI NGODING (PUSH KE GITHUB)
+--------------------------------------------------------------------------------
+A. SETIAP KALI MAU MULAI NGODING (Tarik update terbaru dari teman):
+   1. Pindah sementara ke branch main:
+      git checkout main
+   2. Tarik kode terbaru dari GitHub:
+      git pull origin main
+   3. Kembali ke branch kalian dan gabungkan update terbaru:
+      git checkout nama-branch-kalian
+      git merge main
+
+B. SETELAH SELESAI NGODING & MAU UPLOAD (PUSH) KE GITHUB:
+   1. Cek file apa saja yang berubah:
+      git status
+   2. Masukkan semua perubahan ke staging area:
+      git add .
+   3. Simpan perubahan dengan pesan yang jelas:
+      git commit -m "feat: deskripsi singkat apa yang dikerjakan"
+      (Contoh: git commit -m "feat: menambahkan tampilan dan controller login")
+   4. Upload (push) ke branch kalian di GitHub:
+      git push origin nama-branch-kalian
+
+--------------------------------------------------------------------------------
+TAHAP 5: MENGGABUNGKAN KODE KE MAIN (PULL REQUEST / PR)
+--------------------------------------------------------------------------------
+Setelah fitur kalian sudah dites dan berjalan tanpa error:
+1. Buka halaman repository di browser: https://github.com/omrasend/proyek_pbo
+2. Akan muncul kotak kuning bertuliskan nama branch kalian dengan tombol hijau
+   "Compare & pull request" -> Klik tombol tersebut.
+3. Tulis judul & keterangan singkat perubahan, lalu klik "Create pull request".
+4. Jika tidak ada pesan conflict, klik "Merge pull request" -> "Confirm merge".
+
+--------------------------------------------------------------------------------
+SOLUSI JIKA MUNCUL ERROR UMUM
+--------------------------------------------------------------------------------
+1. Error: "rejected - non-fast-forward" saat git push
+   Penyebab: Ada perubahan di branch yang sama di GitHub yang belum ditarik.
+   Solusi:
+   git pull origin nama-branch-kalian --rebase
+   git push origin nama-branch-kalian
+
+2. Error: Login / Authentication failed saat git push di Windows
+   Solusi: Saat muncul pop-up "Git Credential Manager", pilih "Sign in with your
+   browser", lalu klik Authorize di browser.
+
+3. Salah masukin file atau ingin membatalkan perubahan sebelum di-commit:
+   git checkout -- nama_file.java
+================================================================================

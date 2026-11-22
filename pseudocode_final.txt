@@ -1,0 +1,356 @@
+================================================================================
+--------------------------------------------------------------------------------
+STRUKTUR CLASS (ENTITY)
+--------------------------------------------------------------------------------
+
+Class User {
+  - username: String
+  - password: String (hashed)
+  - role: String   // "ADMIN", "KASIR", "DAPUR"
+
+  + login(username, password): boolean
+  + getRole(): String
+}
+
+Class Pelanggan {
+  - id: int
+  - nama: String
+  - noTelp: String
+  - alamat: String
+}
+
+Class Menu {
+  - id: int
+  - nama: String
+  - harga: double
+
+  + getHarga(): double
+}
+
+Class BahanBaku {
+  - id: int
+  - nama: String
+  - satuan: String   // "kg", "liter", "buah", dll
+}
+
+Class Resep {
+  - menu: Menu
+  - bahan: BahanBaku
+  - takaranPerPorsi: double
+
+  + getBahan(): BahanBaku
+  + getTakaran(): double
+}
+
+Class ItemPesanan {
+  - menu: Menu
+  - jumlah: int
+
+  + getSubtotal(): double    // menu.harga * jumlah
+}
+
+Class Pembayaran {
+  - nominal: double
+  - tipe: String             // "DP" atau "PELUNASAN"
+  - tanggal: Date
+}
+
+Class Pesanan {
+  - id: int
+  - pelanggan: Pelanggan
+  - tanggalAcara: Date
+  - alamatKirim: String
+  - daftarItem: List<ItemPesanan>
+  - daftarPembayaran: List<Pembayaran>
+  - status: String           // "DIKONFIRMASI", "LUNAS", "BATAL"
+
+  + hitungTotal(): double
+  + getSisaTagihan(): double      // hitungTotal() - jumlahPembayaran()
+  + getStatus(): String
+  + setStatus(status): void
+  + tambahPembayaran(tipe, nominal): void
+  + tambahItem(menu, jumlah): void
+}
+
+--------------------------------------------------------------------------------
+DATA ACCESS OBJECT (DAO)
+--------------------------------------------------------------------------------
+
+Class UserDAO {
+  + cariByUsername(username): User     // return null jika tidak ditemukan
+}
+
+Class PelangganDAO {
+  + simpan(pelanggan): int             // return id
+  + cariById(id): Pelanggan
+  + cariByNama(nama): List<Pelanggan>
+}
+
+Class PesananDAO {
+  + simpan(pesanan): int               // return id
+  + ubahStatus(idPesanan, status): void
+  + cariById(id): Pesanan
+  + cariByTanggal(tanggal): List<Pesanan>
+}
+
+Class DetailPesananDAO {
+  + simpan(idPesanan, item): void
+  + ambilByPesanan(idPesanan): List<ItemPesanan>
+  + ambilByTanggal(tanggal): List<ItemPesanan>
+}
+
+Class PembayaranDAO {
+  + simpan(idPesanan, tipe, nominal): void
+  + jumlahBayar(idPesanan): double     // SUM nominal
+}
+
+Class ResepDAO {
+  + ambilByMenu(idMenu): List<Resep>   // return list kosong jika tidak ada
+}
+
+--------------------------------------------------------------------------------
+A. FITUR LOGIN
+--------------------------------------------------------------------------------
+Keterangan:
+Membatasi akses aplikasi hanya untuk pengguna terdaftar. Verifikasi username
+dan password (dihash), menampilkan menu sesuai role, menghentikan akses setelah
+3 kali percobaan gagal.
+
+ALGORITMA Login
+INPUT: username, password (dari user)
+VARIABEL: user: User, percobaan: int = 0
+
+PROSES:
+  1. SELAGI (percobaan < 3) LAKUKAN
+       user = UserDAO.cariByUsername(username)
+
+       JIKA (user != null DAN user.login(username, password)) MAKA
+         Tampilkan "Login berhasil"
+         Tampilkan menuUtama() sesuai user.getRole()
+         SELESAI
+       SEBALIKNYA
+         percobaan = percobaan + 1
+         Tampilkan "Username atau password salah. (3 - percobaan) kali tersisa"
+         JIKA (percobaan >= 3) MAKA
+           Tampilkan "Akses ditolak. Silakan hubungi admin."
+           SELESAI
+         SEBALIKNYA
+           Minta input ulang username & password
+         AKHIR_JIKA
+       AKHIR_JIKA
+     AKHIR_SELAGI
+END
+
+Catatan: Method login() membandingkan password input dengan hash di objek User.
+Fungsi menuUtama() menampilkan menu berbeda per role:
+  ADMIN -> semua fitur
+  KASIR -> input pesanan, pelunasan
+  DAPUR -> kalkulasi kebutuhan bahan
+
+--------------------------------------------------------------------------------
+B. FITUR INPUT PESANAN
+--------------------------------------------------------------------------------
+Keterangan:
+Mencatat pesanan katering baru. Mendukung pelanggan baru/lama, multi-item menu,
+perhitungan otomatis total, validasi DP minimal 30% dan tidak melebihi total.
+Menggunakan transaksi database agar data tersimpan secara atomik.
+
+ALGORITMA InputPesanan
+INPUT: Data dari user
+VARIABEL:
+  pelanggan: Pelanggan
+  pesanan: Pesanan
+  total: double
+  listItem: List<ItemPesanan> = new ArrayList<>()
+  item: ItemPesanan
+
+PROSES:
+  // --- PILIH / DAFTARKAN PELANGGAN ---
+  1. Tampilkan "Pilih pelanggan (1: baru, 2: cari lama)"
+  2. JIKA pilihan = 1 MAKA
+       Input nama, noTelp, alamat
+       pelanggan = new Pelanggan(nama, noTelp, alamat)
+       idPelanggan = PelangganDAO.simpan(pelanggan)
+     SEBALIKNYA
+       Input nama/nomor pelanggan
+       listPelanggan = PelangganDAO.cariByNama(nama)
+       JIKA listPelanggan kosong MAKA
+         Tampilkan "Pelanggan tidak ditemukan"
+         KEMBALI ke langkah 1
+       SEBALIKNYA
+         Tampilkan daftar, user pilih
+         pelanggan = listPelanggan.get(pilihan)
+       AKHIR_JIKA
+     AKHIR_JIKA
+
+  // --- INPUT ITEM PESANAN ---
+  3. SELAGI (user ingin tambah item) LAKUKAN
+       Tampilkan daftar Menu (id, nama, harga)
+       Input idMenu & jumlah
+       menu = cari Menu berdasarkan idMenu
+       JIKA (menu == null) MAKA
+         Tampilkan "Menu tidak ditemukan", ulangi
+       SEBALIKNYA
+         item = new ItemPesanan(menu, jumlah)
+         listItem.add(item)
+         Tanya "Tambah item lagi? (y/n)"
+       AKHIR_JIKA
+     AKHIR_SELAGI
+
+  // --- VALIDASI DP ---
+  4. pesanan = new Pesanan(pelanggan, tanggalAcara, alamatKirim, listItem)
+  5. total = pesanan.hitungTotal()
+     Tampilkan "Total pesanan: Rp total"
+     Tampilkan "DP minimal: Rp (0.3 * total)"
+
+  6. ULANGI
+       Input nominal_dp
+       JIKA (nominal_dp < 0.3 * total) MAKA
+         Tampilkan "DP minimal 30% dari total (Rp 0.3 * total)"
+       SEBALIKNYA JIKA (nominal_dp > total) MAKA
+         Tampilkan "DP tidak boleh melebihi total pesanan"
+       SEBALIKNYA   // nominal valid
+         KELUAR dari loop
+       AKHIR_JIKA
+     SAMPAI (nominal_dp valid)
+
+  // --- SIMPAN KE DATABASE ---
+  7. MULAI TRANSAKSI
+       idPesanan = PesananDAO.simpan(pesanan)
+       UNTUK SETIAP item DALAM listItem LAKUKAN
+         DetailPesananDAO.simpan(idPesanan, item)
+       AKHIR_UNTUK
+       PembayaranDAO.simpan(idPesanan, "DP", nominal_dp)
+     COMMIT
+
+  8. pesanan.setStatus("DIKONFIRMASI")
+     PesananDAO.ubahStatus(idPesanan, "DIKONFIRMASI")
+
+  9. CETAK nota(idPesanan)
+END
+
+--------------------------------------------------------------------------------
+C. FITUR PELUNASAN PEMBAYARAN
+--------------------------------------------------------------------------------
+Keterangan:
+Mengelola pembayaran sisa tagihan. Menampilkan sisa, memvalidasi nominal,
+mencatat pembayaran, mengubah status menjadi "LUNAS" jika lunas.
+
+ALGORITMA Pelunasan
+INPUT: idPesanan, nominalBayar (dari user)
+VARIABEL: pesanan: Pesanan, sisa: double
+
+PROSES:
+  1. pesanan = PesananDAO.cariById(idPesanan)
+
+  2. JIKA (pesanan == null) MAKA
+       Tampilkan "Pesanan tidak ditemukan"
+       SELESAI
+     AKHIR_JIKA
+
+  3. JIKA (pesanan.getStatus().equals("LUNAS")) MAKA
+       Tampilkan "Pesanan ini sudah lunas"
+       SELESAI
+     AKHIR_JIKA
+
+  4. sisa = pesanan.getSisaTagihan()
+     Tampilkan "Sisa tagihan: Rp sisa"
+
+  5. ULANGI
+       Input nominalBayar
+       JIKA (nominalBayar <= 0) MAKA
+         Tampilkan "Nominal harus lebih dari 0"
+       SEBALIKNYA JIKA (nominalBayar > sisa) MAKA
+         Tampilkan "Nominal melebihi sisa tagihan (maks Rp sisa)"
+       SEBALIKNYA
+         PembayaranDAO.simpan(idPesanan, "PELUNASAN", nominalBayar)
+         KELUAR dari loop
+       AKHIR_JIKA
+     SAMPAI (nominalBayar valid)
+
+  6. JIKA (nominalBayar == sisa) MAKA
+       PesananDAO.ubahStatus(idPesanan, "LUNAS")
+       Tampilkan "Pembayaran lunas"
+     SEBALIKNYA
+       Tampilkan "Pembayaran dicatat. Sisa: Rp (sisa - nominalBayar)"
+     AKHIR_JIKA
+
+  7. CETAK kuitansi(idPesanan, nominalBayar)
+END
+
+--------------------------------------------------------------------------------
+D. FITUR KALKULASI KEBUTUHAN BAHAN (FITUR UNGGULAN)
+--------------------------------------------------------------------------------
+Keterangan:
+Menghitung total kebutuhan bahan baku berdasarkan tanggal produksi.
+Mengumpulkan seluruh pesanan pada tanggal tersebut, merekap porsi per menu,
+mengalikan dengan takaran resep, menggabungkan bahan yang sama dari berbagai
+menu menjadi satu daftar kebutuhan.
+
+ALGORITMA KalkulasiKebutuhanBahan
+INPUT: tanggalProduksi (Date)
+VARIABEL:
+  daftarPesanan: List<Pesanan>
+  rekapPorsi: Map<Integer, Integer>       // key: idMenu, value: total porsi
+  itemDetail: List<ItemPesanan>
+  resepList: List<Resep>
+  kebutuhan: Map<Integer, Double>         // key: idBahan, value: total kebutuhan
+  idMenu, idBahan: int
+  totalPorsi: int
+  jumlahKebutuhan: double
+
+PROSES:
+  1. daftarPesanan = PesananDAO.cariByTanggal(tanggalProduksi)
+     // Hanya pesanan dengan status "DIKONFIRMASI" atau "LUNAS"
+
+  2. JIKA (daftarPesanan.isEmpty()) MAKA
+       Tampilkan "Tidak ada pesanan pada tanggal tanggalProduksi"
+       SELESAI
+     AKHIR_JIKA
+
+  // --- REKAP TOTAL PORS PER MENU ---
+  3. rekapPorsi = new HashMap<>()
+
+  4. UNTUK SETIAP p DALAM daftarPesanan LAKUKAN
+       itemDetail = DetailPesananDAO.ambilByPesanan(p.getId())
+       UNTUK SETIAP item DALAM itemDetail LAKUKAN
+         idMenu = item.getMenu().getId()
+         totalPorsi = rekapPorsi.getOrDefault(idMenu, 0)
+         rekapPorsi.put(idMenu, totalPorsi + item.getJumlah())
+       AKHIR_UNTUK
+     AKHIR_UNTUK
+
+  // --- HITUNG KEBUTUHAN BAHAN ---
+  5. kebutuhan = new HashMap<>()
+
+  6. UNTUK SETIAP entry DALAM rekapPorsi LAKUKAN
+       idMenu = entry.getKey()
+       totalPorsi = entry.getValue()
+
+       resepList = ResepDAO.ambilByMenu(idMenu)
+       JIKA (resepList.isEmpty()) MAKA
+         Tampilkan "Peringatan: Menu idMenu tidak memiliki resep, dilewati"
+         LANJUT ke entry berikutnya
+       AKHIR_JIKA
+
+       UNTUK SETIAP r DALAM resepList LAKUKAN
+         idBahan = r.getBahan().getId()
+         jumlahKebutuhan = totalPorsi * r.getTakaran()
+         kebutuhan.put(idBahan,
+           kebutuhan.getOrDefault(idBahan, 0.0) + jumlahKebutuhan)
+       AKHIR_UNTUK
+     AKHIR_UNTUK
+
+  // --- TAMPILKAN HASIL ---
+  7. Tampilkan "===== KEBUTUHAN BAHAN BAKU ====="
+     Tampilkan "Tanggal produksi: tanggalProduksi"
+     Tampilkan "---"
+
+     UNTUK SETIAP entry DALAM kebutuhan LAKUKAN
+       idBahan = entry.getKey()
+       jumlahKebutuhan = entry.getValue()
+       bahan = cari BahanBaku berdasarkan idBahan
+       Tampilkan "- bahan.getNama(): jumlahKebutuhan bahan.getSatuan()"
+     AKHIR_UNTUK
+END
+================================================================================
